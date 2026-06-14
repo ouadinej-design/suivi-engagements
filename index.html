@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Suivi des Engagements</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e3c72;
+            --primary-light: #2a5298;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --success-border: #6ee7b7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --danger-border: #fca5a5;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; font-size: 16px; }
+        .container { max-width: 100%; background: var(--surface); padding: 20px 15px; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin: auto; }
+        .header { text-align: center; margin-bottom: 22px; }
+        h1 { color: var(--primary); margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
+        p.subtitle { color: var(--text-muted); margin: 5px 0 0; font-size: 13px; }
+
+        /* ---- Écran de sélection de profil ---- */
+        .role-card {
+            display: block; width: 100%; text-align: left; background: #f8fafc; border: 2px solid var(--border);
+            border-radius: 12px; padding: 18px; margin-bottom: 14px; cursor: pointer; transition: 0.15s;
+        }
+        .role-card:active { transform: scale(0.99); background: #eef2f7; }
+        .role-card .role-emoji { font-size: 28px; margin-bottom: 6px; display: block; }
+        .role-card .role-title { font-size: 16px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+        .role-card .role-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+        /* ---- Stepper ---- */
+        .stepper { display: flex; position: relative; margin-bottom: 24px; }
+        .stepper::before {
+            content: "";
+            position: absolute; top: 18px; height: 2px; background: #e2e8f0; z-index: 0;
+        }
+        .stepper.steps-3::before { left: calc(100% / 6); right: calc(100% / 6); }
+        .stepper.steps-2::before { left: calc(100% / 4); right: calc(100% / 4); }
+        .step {
+            flex: 1; position: relative; z-index: 1; background: none; border: none; padding: 0;
+            display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .step-circle {
+            width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; color: #94a3b8;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px;
+            transition: 0.25s; border: 2px solid var(--bg);
+        }
+        .step.active .step-circle { background: var(--primary); color: #fff; box-shadow: 0 0 0 4px rgba(30,60,114,0.15); }
+        .step-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-align: center; line-height: 1.25; max-width: 100px; transition: 0.25s; }
+        .step.active .step-label { color: var(--primary); }
+
+        /* ---- Sections ---- */
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        label { display: block; margin: 14px 0 4px; font-weight: 600; font-size: 14px; color: #1e293b; }
+        input[type="text"], input[type="password"], textarea {
+            width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; display: block;
+        }
+        input:focus, textarea:focus { outline: 2px solid var(--primary-light); outline-offset: 1px; border-color: var(--primary-light); }
+        textarea { height: 120px; resize: none; }
+
+        .row { display: flex; flex-direction: column; gap: 10px; }
+
+        /* ---- Champs PIN avec oeil ---- */
+        .pin-wrapper { position: relative; }
+        .pin-wrapper input { padding-right: 46px; }
+        .toggle-eye {
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; font-size: 19px; cursor: pointer; padding: 8px; color: var(--text-muted); line-height: 1;
+        }
+
+        .char-count { font-size: 12px; color: #94a3b8; margin-top: 6px; text-align: right; }
+
+        button.main-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 20px; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.15s; }
+        button.main-btn:active { opacity: 0.8; transform: scale(0.99); }
+
+        .output-box { display: none; background: #f8fafc; border: 2px dashed #94a3b8; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .instruction { font-size: 13px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
+
+        .alert { padding: 14px; border-radius: 8px; margin-top: 15px; display: none; font-weight: bold; text-align: center; font-size: 14px; line-height: 1.6; }
+        .alert-danger { background: var(--danger-bg); color: #991b1b; border: 1px solid var(--danger-border); }
+        .alert-success { background: var(--success-bg); color: #065f46; border: 1px solid var(--success-border); }
+
+        .file-input-wrapper { background: #f1f5f9; padding: 15px; border-radius: 8px; border: 2px dashed var(--border); text-align: center; margin-bottom: 10px; }
+        #file-selector { font-size: 14px; width: 100%; }
+        .or-text { text-align: center; color: #94a3b8; font-weight: bold; font-size: 14px; margin: 10px 0; }
+
+        .lock-notice { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; color: #1e40af; font-size: 14px; font-weight: 500; }
+
+        /* ---- Copie ---- */
+        .copy-row { display: flex; gap: 8px; align-items: center; }
+        .copy-row > div { flex: 1; min-width: 0; }
+        .copy-btn {
+            flex-shrink: 0; background: var(--primary); color: #fff; border: none; border-radius: 6px;
+            padding: 12px 14px; font-size: 13px; font-weight: 700; cursor: pointer; min-height: 48px; white-space: nowrap;
+        }
+        .copy-btn:active { opacity: 0.8; }
+        .secondary-btn { width: 100%; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; padding: 14px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 15px; min-height: 46px; }
+        .secondary-btn:active { opacity: 0.8; }
+
+        /* ---- Toast ---- */
+        #toast {
+            position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 30px; font-size: 14px; font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.18); z-index: 1000; opacity: 0; transition: all 0.3s ease;
+            max-width: 92%; text-align: center; pointer-events: none;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.success { background: var(--success); }
+        #toast.error { background: var(--danger); }
+        #toast.info { background: var(--primary); }
+
+        .duree-info { font-size: 12px; color: var(--text-muted); text-align: center; margin: -4px 0 14px; }
+
+        .switch-profile { display: block; text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 18px; background: none; border: none; cursor: pointer; width: 100%; padding: 6px; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🎯 Mes Engagements Pep's</h1>
+        <p class="subtitle" id="subtitle">Version Mobile Sécurisée</p>
+    </div>
+
+    <!-- ================= ÉCRAN DE SÉLECTION DE PROFIL ================= -->
+    <div id="section-role">
+        <p class="instruction" style="text-align:center; margin-bottom:14px;">Pour commencer, indiquez qui vous êtes :</p>
+
+        <button class="role-card" onclick="choisirProfil('nada')">
+            <span class="role-emoji">👩‍💼</span>
+            <span class="role-title">Je suis Nada (Formatrice)</span>
+            <span class="role-desc">Créer la clé de session pour le groupe et ouvrir les enveloppes le jour de l'entretien.</span>
+        </button>
+
+        <button class="role-card" onclick="choisirProfil('stagiaire')">
+            <span class="role-emoji">🎓</span>
+            <span class="role-title">Je suis Stagiaire</span>
+            <span class="role-desc">Rédiger mes engagements et les sceller avec mon propre code PIN.</span>
+        </button>
+    </div>
+
+    <!-- ================= STEPPER NADA (3 étapes) ================= -->
+    <div class="stepper steps-3" id="stepper-nada" style="display:none;">
+        <button class="step active" id="step-nada" onclick="switchTab('nada')">
+            <span class="step-circle">1</span>
+            <span class="step-label">Clé de session</span>
+        </button>
+        <button class="step" id="step-write-nada" onclick="switchTab('write')">
+            <span class="step-circle">2</span>
+            <span class="step-label">Écrire (test)</span>
+        </button>
+        <button class="step" id="step-read-nada" onclick="switchTab('read')">
+            <span class="step-circle">3</span>
+            <span class="step-label">Jour de l'entretien</span>
+        </button>
+    </div>
+
+    <!-- ================= STEPPER STAGIAIRE (2 étapes) ================= -->
+    <div class="stepper steps-2" id="stepper-stagiaire" style="display:none;">
+        <button class="step active" id="step-write-stag" onclick="switchTab('write')">
+            <span class="step-circle">1</span>
+            <span class="step-label">Écrire mes objectifs</span>
+        </button>
+        <button class="step" id="step-read-stag" onclick="switchTab('read')">
+            <span class="step-circle">2</span>
+            <span class="step-label">Jour de l'entretien</span>
+        </button>
+    </div>
+
+    <!-- ================= ÉTAPE NADA — réservée au profil Nada ================= -->
+    <div id="section-nada" style="display: none;">
+        <label>Définir le Code PIN de Nada :</label>
+        <div class="pin-wrapper">
+            <input type="password" id="nada-secret-setup" placeholder="Ex: 1234" inputmode="numeric" maxlength="8">
+            <button type="button" class="toggle-eye" onclick="togglePin('nada-secret-setup', this)" aria-label="Afficher le code">👁️</button>
+        </div>
+
+        <button class="main-btn" onclick="genererJetonNada()">🔑 Créer le jeton stagiaire</button>
+
+        <div id="output-nada" class="output-box">
+            <p style="margin:0 0 8px 0; font-weight:bold; color:var(--primary);">Jeton à envoyer aux stagiaires :</p>
+            <div class="copy-row">
+                <div id="jeton-text" style="font-family: monospace; background: #e2e8f0; padding: 12px; border-radius: 6px; font-size: 13px; word-break: break-all; user-select: all; text-align: center; font-weight: bold;"></div>
+                <button type="button" class="copy-btn" onclick="copyText(document.getElementById('jeton-text').innerText, this)">📋 Copier</button>
+            </div>
+            <p class="instruction">📱 Envoyez ce code par SMS/WhatsApp à vos stagiaires.</p>
+        </div>
+    </div>
+
+    <!-- ================= ÉTAPE ÉCRIRE — commune aux deux profils ================= -->
+    <div id="section-write" style="display: none;">
+
+        <div id="gatekeeper-zone">
+            <div class="lock-notice">
+                🔒 Cet espace est protégé. Veuillez saisir la clé de session fournie par Nada pour commencer à écrire vos objectifs.
+            </div>
+            <label>Saisir la clé de session de Nada :</label>
+            <input type="text" id="jeton-input-stagiaire" placeholder="Collez le code à 16 caractères ici" autocomplete="off">
+            <button class="main-btn" style="background: #2563eb;" onclick="verifierEtDebloquerFormulaire()">🔓 Valider la clé et commencer</button>
+        </div>
+
+        <div id="form-stagiaire" style="display: none;">
+            <div class="lock-notice" style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;">
+                ✅ Clé de session validée avec succès. Vous pouvez rédiger vos engagements.
+            </div>
+
+            <div class="row">
+                <div>
+                    <label>Prénom :</label>
+                    <input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name">
+                </div>
+                <div>
+                    <label>Nom :</label>
+                    <input type="text" id="nom" placeholder="Votre nom" autocomplete="family-name">
+                </div>
+            </div>
+
+            <label>Mes engagements pour les 30 prochains jours :</label>
+            <textarea id="engagements" placeholder="Rédigez ici vos objectifs de formation..." oninput="updateCharCount()"></textarea>
+            <div class="char-count" id="char-count">0 caractère</div>
+
+            <label>Créez votre Code PIN secret (Stagiaire) :</label>
+            <div class="pin-wrapper">
+                <input type="password" id="key-stagiaire" placeholder="Ex: 5678" inputmode="numeric" maxlength="8" autocomplete="off">
+                <button type="button" class="toggle-eye" onclick="togglePin('key-stagiaire', this)" aria-label="Afficher le code">👁️</button>
+            </div>
+            <p class="instruction">⚠️ Mémorisez bien ce code : il vous sera demandé le jour de l'entretien pour ouvrir votre enveloppe.</p>
+
+            <button class="main-btn" style="background: linear-gradient(135deg, #11998e, #38ef7d);" onclick="scellerEnveloppeStagiaire()">🔒 Enregistrer et Sceller</button>
+        </div>
+
+        <div id="success-stagiaire" class="output-box" style="border-color: var(--success); background: #f0fdf4; text-align: center;">
+            <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 18px;">C'est scellé ! 🔒</h3>
+            <p style="font-size: 14px; margin-bottom: 5px;">Vos engagements ont été effacés de l'écran par sécurité.</p>
+            <p style="font-weight: bold; color: var(--primary); font-size: 14px;" id="filename-downloaded"></p>
+            <p class="instruction" style="color: #1e293b;"><b>Action :</b> Envoyez le fichier texte téléchargé par e-mail à Nada.<br><br>⚠️ <i>Si le téléchargement n'a pas démarré sur votre mobile, copiez le texte codé ci-dessous et envoyez-le par SMS ou mail à Nada :</i></p>
+            <div class="copy-row">
+                <div><textarea id="fallback-copy-text" style="font-size: 12px; height: 70px; background: #fafafa; margin:0;" readonly onclick="this.select()"></textarea></div>
+                <button type="button" class="copy-btn" onclick="copyText(document.getElementById('fallback-copy-text').value, this)">📋 Copier</button>
+            </div>
+            <button class="secondary-btn" onclick="reinitialiserFormulaireStagiaire()">Rédiger un autre formulaire</button>
+        </div>
+    </div>
+
+    <!-- ================= ÉTAPE LECTURE — commune aux deux profils ================= -->
+    <div id="section-read" style="display: none;">
+        <div class="file-input-wrapper">
+            <label style="margin: 0 0 4px 0;">📁 Option A : Charger le fichier .txt :</label>
+            <input type="file" id="file-selector" accept=".txt" onchange="chargerFichierTexte(event)">
+        </div>
+
+        <div class="or-text">— OU —</div>
+
+        <div>
+            <label style="margin-top: 0;">📝 Option B : Coller le texte de l'enveloppe :</label>
+            <textarea id="payload-input" placeholder="Ouvrez le fichier du stagiaire, copiez son contenu bizarre et collez-le ici..."></textarea>
+        </div>
+
+        <div class="row">
+            <div>
+                <label>Code PIN du Stagiaire :</label>
+                <div class="pin-wrapper">
+                    <input type="password" id="decrypt-key-stagiaire" placeholder="Code du stagiaire" inputmode="numeric" maxlength="8" autocomplete="off">
+                    <button type="button" class="toggle-eye" onclick="togglePin('decrypt-key-stagiaire', this)" aria-label="Afficher le code">👁️</button>
+                </div>
+            </div>
+            <div>
+                <label>Code PIN de Nada :</label>
+                <div class="pin-wrapper">
+                    <input type="password" id="decrypt-key-nada" placeholder="Votre code PIN" inputmode="numeric" maxlength="8" autocomplete="off">
+                    <button type="button" class="toggle-eye" onclick="togglePin('decrypt-key-nada', this)" aria-label="Afficher le code">👁️</button>
+                </div>
+            </div>
+        </div>
+
+        <p class="duree-info" id="duree-info"></p>
+
+        <button class="main-btn" onclick="ouvrirEnveloppeFinale()">🔓 Ouvrir la lettre d'engagements</button>
+
+        <div id="status-message" class="alert alert-danger"></div>
+
+        <div id="output-decrypt" class="output-box" style="border-color: var(--success); background: #f0fdf4;">
+            <h3 style="margin:0 0 5px 0; color: #166534; font-size: 16px;" id="decrypted-title"></h3>
+            <p style="font-size: 12px; color: #64748b; margin: 0 0 10px 0;" id="decrypted-date"></p>
+            <div id="decrypted-content" style="white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #1e293b; background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;"></div>
+        </div>
+
+        <button class="switch-profile" onclick="changerProfil()">Changer de profil</button>
+    </div>
+
+    <button class="switch-profile" id="switch-profile-write" style="display:none;" onclick="changerProfil()">Changer de profil</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+    // ============================================================
+    // CONFIGURATION : durée pendant laquelle l'enveloppe reste
+    // verrouillée après le scellage, avant que Nada puisse l'ouvrir.
+    // Valeur actuelle : 10 minutes (mode test).
+    // Pour la mise en production réelle "30 jours", remplacer par :
+    //   const DUREE_VERROU_MS = 30 * 24 * 60 * 60 * 1000;
+    // ============================================================
+    const DUREE_VERROU_MS = 10 * 60 * 1000;
+
+    let countdownInterval = null;
+    let profilActuel = null; // 'nada' ou 'stagiaire'
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateCharCount();
+        afficherDureeVerrou();
+
+        const savedJeton = localStorage.getItem('pep_jeton_stagiaire');
+        if (savedJeton) {
+            document.getElementById('jeton-input-stagiaire').value = savedJeton;
+        }
+
+        const savedProfil = localStorage.getItem('pep_profil');
+        if (savedProfil === 'nada' || savedProfil === 'stagiaire') {
+            choisirProfil(savedProfil, true);
+        }
+    });
+
+    // ---- Gestion du profil ----
+    function choisirProfil(profil, depuisSauvegarde) {
+        profilActuel = profil;
+        localStorage.setItem('pep_profil', profil);
+
+        document.getElementById('section-role').style.display = 'none';
+
+        if (profil === 'nada') {
+            document.getElementById('subtitle').textContent = 'Version Mobile Sécurisée — Espace Nada';
+            document.getElementById('stepper-nada').style.display = 'flex';
+            document.getElementById('stepper-stagiaire').style.display = 'none';
+            document.getElementById('section-nada').style.display = 'block';
+            document.getElementById('switch-profile-write').style.display = 'none';
+            setActiveStep('nada', 3);
+        } else {
+            document.getElementById('subtitle').textContent = 'Version Mobile Sécurisée — Espace Stagiaire';
+            document.getElementById('stepper-nada').style.display = 'none';
+            document.getElementById('stepper-stagiaire').style.display = 'flex';
+            document.getElementById('section-nada').style.display = 'none';
+            document.getElementById('section-write').style.display = 'block';
+            document.getElementById('switch-profile-write').style.display = 'block';
+            setActiveStep('write', 2);
+        }
+
+        if (!depuisSauvegarde) showToast(profil === 'nada' ? '👩‍💼 Espace Nada activé' : '🎓 Espace Stagiaire activé', 'success');
+    }
+
+    function changerProfil() {
+        localStorage.removeItem('pep_profil');
+        profilActuel = null;
+        location.reload();
+    }
+
+    // ---- Navigation ----
+    function switchTab(tab) {
+        const sections = ['nada', 'write', 'read'];
+        sections.forEach(s => {
+            const section = document.getElementById(`section-${s}`);
+            // L'étape Nada n'est jamais montrée au profil stagiaire
+            if (s === 'nada' && profilActuel !== 'nada') return;
+
+            const isTarget = (s === tab);
+            section.style.display = isTarget ? 'block' : 'none';
+            if (isTarget) {
+                section.classList.remove('fade-in');
+                void section.offsetWidth; // force reflow pour relancer l'animation
+                section.classList.add('fade-in');
+            }
+        });
+
+        document.getElementById('switch-profile-write').style.display =
+            (profilActuel === 'stagiaire' && tab === 'write') ? 'block' : 'none';
+
+        const stepNumber = (profilActuel === 'nada') ? 3 : 2;
+        setActiveStep(tab, stepNumber);
+        window.scrollTo(0, 0);
+    }
+
+    function setActiveStep(tab, totalSteps) {
+        const prefix = (profilActuel === 'nada') ? '-nada' : (totalSteps === 2 ? '-stag' : '');
+        ['nada', 'write', 'read'].forEach(s => {
+            let id;
+            if (profilActuel === 'nada') {
+                id = (s === 'nada') ? 'step-nada' : `step-${s}-nada`;
+            } else {
+                id = `step-${s}-stag`;
+            }
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('active', s === tab);
+        });
+    }
+
+    function afficherDureeVerrou() {
+        document.getElementById('duree-info').textContent =
+            `🔒 Durée du verrou configurée : ${formatDuree(DUREE_VERROU_MS)}`;
+    }
+
+    function formatDuree(ms) {
+        const jours = Math.floor(ms / 86400000);
+        if (jours >= 1) return jours + ' jour' + (jours > 1 ? 's' : '');
+        const heures = Math.floor(ms / 3600000);
+        if (heures >= 1) return heures + ' heure' + (heures > 1 ? 's' : '');
+        const minutes = Math.floor(ms / 60000);
+        return minutes + ' minute' + (minutes > 1 ? 's' : '');
+    }
+
+    function togglePin(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+        }
+    }
+
+    function showToast(message, type = 'info', duration = 2600) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'show ' + type;
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => { toast.className = ''; }, duration);
+    }
+
+    function copyText(text, btn) {
+        const fallbackCopy = () => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+        };
+
+        const onSuccess = () => {
+            const original = btn.innerHTML;
+            btn.innerHTML = '✅ Copié';
+            showToast('Copié dans le presse-papiers ✅', 'success');
+            setTimeout(() => { btn.innerHTML = original; }, 1500);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+                fallbackCopy();
+                onSuccess();
+            });
+        } else {
+            fallbackCopy();
+            onSuccess();
+        }
+    }
+
+    function updateCharCount() {
+        const len = document.getElementById('engagements').value.length;
+        const el = document.getElementById('char-count');
+        const min = 50;
+        if (len === 0) {
+            el.textContent = '0 caractère';
+            el.style.color = '#94a3b8';
+        } else if (len < min) {
+            el.textContent = `${len} caractères (${min - len} de plus recommandés)`;
+            el.style.color = '#94a3b8';
+        } else {
+            el.textContent = `${len} caractères ✓`;
+            el.style.color = 'var(--success)';
+        }
+    }
+
+    function isPinValide(pin) {
+        return /^[0-9]{4,8}$/.test(pin);
+    }
+
+    // ÉTAPE NADA (1) : génération du jeton
+    function genererJetonNada() {
+        const passwordNada = document.getElementById('nada-secret-setup').value;
+        if (!isPinValide(passwordNada)) {
+            showToast('❌ Entrez un code PIN de 4 à 8 chiffres.', 'error');
+            return;
+        }
+        const jeton = CryptoJS.SHA256(passwordNada).toString().substring(0, 16);
+        document.getElementById('jeton-text').innerText = jeton;
+        document.getElementById('output-nada').style.display = 'block';
+        showToast('✅ Jeton créé avec succès.', 'success');
+    }
+
+    // ÉTAPE ÉCRIRE : déverrouillage avec la clé de session
+    function verifierEtDebloquerFormulaire() {
+        const jetonSaisi = document.getElementById('jeton-input-stagiaire').value.trim();
+
+        if (jetonSaisi.length < 10) {
+            showToast('❌ Code invalide. Collez le jeton complet à 16 caractères fourni par Nada.', 'error');
+            return;
+        }
+
+        localStorage.setItem('pep_jeton_stagiaire', jetonSaisi);
+
+        document.getElementById('gatekeeper-zone').style.display = 'none';
+        document.getElementById('form-stagiaire').style.display = 'block';
+        showToast('🔓 Accès débloqué, bonne rédaction !', 'success');
+    }
+
+    function scellerEnveloppeStagiaire() {
+        const jetonNada = document.getElementById('jeton-input-stagiaire').value.trim();
+        const prenom = document.getElementById('prenom').value.trim();
+        const nom = document.getElementById('nom').value.trim();
+        const engagements = document.getElementById('engagements').value.trim();
+        const keyStagiaire = document.getElementById('key-stagiaire').value;
+
+        if (!prenom || !nom || !engagements) {
+            showToast('❌ Veuillez remplir tous les champs du formulaire.', 'error');
+            return;
+        }
+        if (!isPinValide(keyStagiaire)) {
+            showToast('❌ Votre code PIN doit contenir 4 à 8 chiffres.', 'error');
+            return;
+        }
+
+        const data = { prenom: prenom, nom: nom, engagements: engagements, timestamp: Date.now() };
+        const cleChiffrement = keyStagiaire + "@pep@" + jetonNada;
+        const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), cleChiffrement).toString();
+
+        const nomFichier = `engagements_${prenom}_${nom}.txt`;
+        document.getElementById('fallback-copy-text').value = encrypted;
+
+        try {
+            const blob = new Blob([encrypted], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = nomFichier;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.log("Téléchargement non supporté");
+        }
+
+        document.getElementById('filename-downloaded').innerText = nomFichier;
+        document.getElementById('form-stagiaire').style.display = 'none';
+        document.getElementById('success-stagiaire').style.display = 'block';
+        showToast('🔒 Enveloppe scellée avec succès.', 'success');
+    }
+
+    function reinitialiserFormulaireStagiaire() {
+        document.getElementById('prenom').value = '';
+        document.getElementById('nom').value = '';
+        document.getElementById('engagements').value = '';
+        document.getElementById('key-stagiaire').value = '';
+        document.getElementById('gatekeeper-zone').style.display = 'block';
+        document.getElementById('form-stagiaire').style.display = 'none';
+        document.getElementById('success-stagiaire').style.display = 'none';
+        updateCharCount();
+    }
+
+    // ÉTAPE LECTURE : ouverture de l'enveloppe
+    function chargerFichierTexte(event) {
+        const fichier = event.target.files[0];
+        if (!fichier) return;
+        const lecteur = new FileReader();
+        lecteur.onload = function (e) {
+            document.getElementById('payload-input').value = e.target.result;
+            showToast('📁 Fichier chargé.', 'success');
+        };
+        lecteur.readAsText(fichier);
+    }
+
+    function demarrerCompteARebours(cibleTimestamp) {
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        const statusDiv = document.getElementById('status-message');
+
+        const tick = () => {
+            const restant = cibleTimestamp - Date.now();
+            if (restant <= 0) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                statusDiv.className = 'alert alert-success';
+                statusDiv.innerHTML = '✅ Le délai est écoulé !<br><button class="main-btn" style="margin-top:10px;" onclick="ouvrirEnveloppeFinale()">🔓 Ouvrir maintenant</button>';
+                statusDiv.style.display = 'block';
+                return;
+            }
+            const minutes = Math.floor(restant / 60000);
+            const secondes = Math.floor((restant % 60000) / 1000);
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.innerHTML = `⏳ <b>Accès bloqué</b><br>Temps restant : <b>${minutes}m ${String(secondes).padStart(2, '0')}s</b>`;
+            statusDiv.style.display = 'block';
+        };
+
+        tick();
+        countdownInterval = setInterval(tick, 1000);
+    }
+
+    function ouvrirEnveloppeFinale() {
+        const payload = document.getElementById('payload-input').value.trim();
+        const keyS = document.getElementById('decrypt-key-stagiaire').value;
+        const keyN = document.getElementById('decrypt-key-nada').value;
+        const statusDiv = document.getElementById('status-message');
+        const outputDiv = document.getElementById('output-decrypt');
+
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        statusDiv.style.display = 'none';
+        outputDiv.style.display = 'none';
+
+        if (!payload) { showToast('❌ Chargez le fichier ou collez le texte à l\'Option B.', 'error'); return; }
+        if (!keyS || !keyN) { showToast('❌ Saisissez les deux codes PIN.', 'error'); return; }
+
+        const jetonNadaTheorique = CryptoJS.SHA256(keyN).toString().substring(0, 16);
+        const cleCombineeVerification = keyS + "@pep@" + jetonNadaTheorique;
+
+        try {
+            const bytes = CryptoJS.AES.decrypt(payload, cleCombineeVerification);
+            const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
+            if (!decryptedText) throw new Error("Erreur");
+
+            const data = JSON.parse(decryptedText);
+
+            const cible = data.timestamp + DUREE_VERROU_MS;
+            if (Date.now() < cible) {
+                demarrerCompteARebours(cible);
+                return;
+            }
+
+            document.getElementById('decrypted-title').innerText = `📄 Objectifs de ${data.prenom} ${data.nom}`;
+            document.getElementById('decrypted-date').innerText = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`;
+            document.getElementById('decrypted-content').innerText = data.engagements;
+            outputDiv.style.display = 'block';
+            showToast('✅ Enveloppe ouverte.', 'success');
+
+        } catch (error) {
+            statusDiv.className = "alert alert-danger";
+            statusDiv.innerText = "❌ Codes PIN incorrects ou texte corrompu.";
+            statusDiv.style.display = 'block';
+        }
+    }
+</script>
+</body>
+</html>
