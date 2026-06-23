@@ -125,6 +125,27 @@
         .duree-info { font-size: 12px; color: var(--text-muted); text-align: center; margin: -4px 0 14px; }
 
         .switch-profile { display: block; text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 18px; background: none; border: none; cursor: pointer; width: 100%; padding: 6px; text-decoration: underline; }
+
+        /* ---- Modale protection Nada ---- */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+            z-index: 500; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+        .modal-box {
+            background: white; border-radius: 16px; padding: 24px 20px; width: 100%; max-width: 340px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+        }
+        .modal-box h2 { margin: 0 0 6px 0; font-size: 18px; color: var(--primary); }
+        .modal-box p { color: var(--text-muted); font-size: 13px; margin: 0 0 16px 0; line-height: 1.4; }
+        .modal-box .modal-error { color: var(--danger); font-size: 13px; font-weight: bold; margin: 8px 0 0; min-height: 20px; }
+        .modal-cancel { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin-top: 14px; text-decoration: underline; }
+        .shake { animation: shake 0.4s ease; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
     </style>
 </head>
 <body>
@@ -139,10 +160,10 @@
     <div id="section-role">
         <p class="instruction" style="text-align:center; margin-bottom:14px;">Pour commencer, indiquez qui vous êtes :</p>
 
-        <button class="role-card" onclick="choisirProfil('nada')">
+        <button class="role-card" onclick="ouvrirModaleNada()">
             <span class="role-emoji">👩‍💼</span>
             <span class="role-title">Je suis Nada (Formatrice)</span>
-            <span class="role-desc">Créer la clé de session pour le groupe et ouvrir les enveloppes le jour de l'entretien.</span>
+            <span class="role-desc">Accès protégé par mot de passe.</span>
         </button>
 
         <button class="role-card" onclick="choisirProfil('stagiaire')">
@@ -304,6 +325,23 @@
     <button class="switch-profile" id="switch-profile-write" style="display:none;" onclick="changerProfil()">Changer de profil</button>
 </div>
 
+<!-- ================= MODALE MOT DE PASSE NADA ================= -->
+<div class="modal-overlay" id="modal-nada">
+    <div class="modal-box" id="modal-box">
+        <h2>🔐 Espace Formatrice</h2>
+        <p>Cet espace est réservé à Nada.<br>Entrez le mot de passe pour continuer.</p>
+        <div class="pin-wrapper" style="text-align:left;">
+            <input type="password" id="modal-password" placeholder="Mot de passe" inputmode="numeric" maxlength="8"
+                onkeydown="if(event.key==='Enter') validerMotDePasseNada()">
+            <button type="button" class="toggle-eye" onclick="togglePin('modal-password', this)">👁️</button>
+        </div>
+        <div class="modal-error" id="modal-error"></div>
+        <button class="main-btn" style="margin-top:14px;" onclick="validerMotDePasseNada()">✅ Confirmer</button>
+        <br>
+        <button class="modal-cancel" onclick="fermerModaleNada()">Annuler</button>
+    </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -333,6 +371,48 @@
             choisirProfil(savedProfil, true);
         }
     });
+
+    // ============================================================
+    // MOT DE PASSE ESPACE NADA  → "nada2025"
+    // CODE ADMIN (débloque tout) → "admin2025"
+    // Pour changer : CryptoJS.SHA256("nouveauMDP").toString()
+    // ============================================================
+    const NADA_PASSWORD_HASH  = CryptoJS.SHA256("nada2025").toString();
+    const ADMIN_PASSWORD_HASH = CryptoJS.SHA256("admin2025").toString();
+
+    function estAdmin(valeur) {
+        return CryptoJS.SHA256(valeur).toString() === ADMIN_PASSWORD_HASH;
+    }
+
+    function ouvrirModaleNada() {
+        document.getElementById('modal-nada').classList.add('open');
+        document.getElementById('modal-password').value = '';
+        document.getElementById('modal-error').textContent = '';
+        setTimeout(() => document.getElementById('modal-password').focus(), 100);
+    }
+
+    function fermerModaleNada() {
+        document.getElementById('modal-nada').classList.remove('open');
+        document.getElementById('modal-password').value = '';
+        document.getElementById('modal-error').textContent = '';
+    }
+
+    function validerMotDePasseNada() {
+        const mdp = document.getElementById('modal-password').value;
+        const hash = CryptoJS.SHA256(mdp).toString();
+        if (hash === NADA_PASSWORD_HASH || hash === ADMIN_PASSWORD_HASH) {
+            fermerModaleNada();
+            choisirProfil('nada', false);
+            if (hash === ADMIN_PASSWORD_HASH) showToast('🛡️ Mode Admin activé', 'info');
+        } else {
+            const box = document.getElementById('modal-box');
+            document.getElementById('modal-error').textContent = '❌ Mot de passe incorrect. Réessayez.';
+            box.classList.remove('shake');
+            void box.offsetWidth;
+            box.classList.add('shake');
+            document.getElementById('modal-password').value = '';
+        }
+    }
 
     // ---- Gestion du profil ----
     function choisirProfil(profil, depuisSauvegarde) {
@@ -610,8 +690,8 @@
 
     function ouvrirEnveloppeFinale() {
         const payload = document.getElementById('payload-input').value.trim();
-        const keyS = document.getElementById('decrypt-key-stagiaire').value;
-        const keyN = document.getElementById('decrypt-key-nada').value;
+        const keyS    = document.getElementById('decrypt-key-stagiaire').value;
+        const keyN    = document.getElementById('decrypt-key-nada').value;
         const statusDiv = document.getElementById('status-message');
         const outputDiv = document.getElementById('output-decrypt');
 
@@ -619,35 +699,44 @@
         statusDiv.style.display = 'none';
         outputDiv.style.display = 'none';
 
-        if (!payload) { showToast('❌ Chargez le fichier ou collez le texte à l\'Option B.', 'error'); return; }
+        if (!payload) { showToast("❌ Chargez le fichier ou collez le texte à l'Option B.", 'error'); return; }
         if (!keyS || !keyN) { showToast('❌ Saisissez les deux codes PIN.', 'error'); return; }
 
-        const jetonNadaTheorique = CryptoJS.SHA256(keyN).toString().substring(0, 16);
-        const cleCombineeVerification = keyS + "@pep@" + jetonNadaTheorique;
+        // --- Détection mode Admin ---
+        // Si keyN = code admin, le verrou de temps est ignoré.
+        // Le déchiffrement utilise quand même keyS (PIN stagiaire) + keyN (admin ou Nada).
+        // En cas d'oubli total du PIN Nada : saisir admin2025 dans keyN ET le PIN stagiaire dans keyS.
+        // L'admin peut aussi saisir le vrai PIN Nada pour un déchiffrement normal sans bypass.
+        const modeAdmin = estAdmin(keyN);
+
+        const jetonNada = CryptoJS.SHA256(keyN).toString().substring(0, 16);
+        const cleFinal  = keyS + "@pep@" + jetonNada;
 
         try {
-            const bytes = CryptoJS.AES.decrypt(payload, cleCombineeVerification);
+            const bytes = CryptoJS.AES.decrypt(payload, cleFinal);
             const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-
-            if (!decryptedText) throw new Error("Erreur");
-
+            if (!decryptedText) throw new Error('vide');
             const data = JSON.parse(decryptedText);
 
+            // Verrou de temps : ignoré si admin
             const cible = data.timestamp + DUREE_VERROU_MS;
-            if (Date.now() < cible) {
+            if (!modeAdmin && Date.now() < cible) {
                 demarrerCompteARebours(cible);
                 return;
             }
 
-            document.getElementById('decrypted-title').innerText = `📄 Objectifs de ${data.prenom} ${data.nom}`;
-            document.getElementById('decrypted-date').innerText = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`;
+            const badge = modeAdmin ? ' 🛡️' : '';
+            document.getElementById('decrypted-title').innerText   = `📄 Objectifs de ${data.prenom} ${data.nom}${badge}`;
+            document.getElementById('decrypted-date').innerText    = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}${modeAdmin ? ' — Verrou ignoré (Admin)' : ''}`;
             document.getElementById('decrypted-content').innerText = data.engagements;
             outputDiv.style.display = 'block';
-            showToast('✅ Enveloppe ouverte.', 'success');
+            showToast(modeAdmin ? '🛡️ Ouverture forcée par Admin' : '✅ Enveloppe ouverte.', modeAdmin ? 'info' : 'success');
 
-        } catch (error) {
-            statusDiv.className = "alert alert-danger";
-            statusDiv.innerText = "❌ Codes PIN incorrects ou texte corrompu.";
+        } catch (e) {
+            statusDiv.className  = 'alert alert-danger';
+            statusDiv.innerText  = modeAdmin
+                ? "❌ Impossible de déchiffrer. Vérifiez le PIN du stagiaire (keyS)."
+                : "❌ Codes PIN incorrects ou texte corrompu.";
             statusDiv.style.display = 'block';
         }
     }
