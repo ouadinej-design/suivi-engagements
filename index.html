@@ -186,6 +186,50 @@
             font-size: 12px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.35);
         }
 
+        /* ==================== OVERLAY PLEIN ÉCRAN — OUVERTURE ==================== */
+        .fullscreen-bottle-overlay {
+            position: fixed; inset: 0; z-index: 2000; display: none;
+            background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 45%, #0369a1 100%);
+            align-items: center; justify-content: center; flex-direction: column;
+            overflow: hidden; padding: 20px;
+        }
+        .fullscreen-bottle-overlay.show { display: flex; }
+        .fs-close-btn {
+            position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.25); border: none;
+            color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; z-index: 5;
+        }
+        .fs-waves { position: absolute; bottom: 0; left: 0; width: 100%; height: 35%; z-index: 1; }
+        .fs-waves svg { width: 100%; height: 100%; }
+        .fs-bottle-wrap { position: relative; width: 110px; height: 240px; z-index: 2; flex-shrink: 0; }
+        .fs-bottle-wrap svg { width: 100%; height: 100%; }
+        .fs-cork { transform-origin: 50% 100%; }
+        .fullscreen-bottle-overlay.play .fs-cork { animation: fsCorkPop 0.8s ease-in 0.5s both; }
+        @keyframes fsCorkPop {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-170px) rotate(280deg); opacity: 0; }
+        }
+        .fs-paper {
+            position: relative; z-index: 3; margin-top: -30px;
+            background: #fdf6e3; border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,0.3);
+            padding: 20px; max-width: 340px; width: 88%; max-height: 46vh; overflow-y: auto;
+            transform: translateY(50px) scale(0.85); opacity: 0;
+        }
+        .fullscreen-bottle-overlay.play .fs-paper { animation: fsPaperOut 0.9s ease-out 1s both; }
+        @keyframes fsPaperOut {
+            0%   { transform: translateY(50px) scale(0.85); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .fs-paper h3 { margin: 0 0 6px; color: #166534; font-size: 16px; }
+        .fs-paper .fs-date { font-size: 12px; color: #64748b; margin: 0 0 10px; }
+        .fs-paper .fs-content { white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #1e293b; }
+        .fs-continue-btn {
+            margin-top: 18px; background: #fff; color: #0369a1; border: none; border-radius: 24px;
+            padding: 13px 28px; font-weight: 800; font-size: 14px; cursor: pointer; z-index: 3;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0;
+        }
+        .fullscreen-bottle-overlay.play .fs-continue-btn { animation: fsFadeIn 0.6s ease-out 1.6s both; }
+        @keyframes fsFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+
         /* ---- Modale protection Nada ---- */
         .modal-overlay {
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
@@ -378,6 +422,30 @@
     </div>
 
     <button class="switch-profile" id="switch-profile-write" style="display:none;" onclick="changerProfil()">Changer de profil</button>
+</div>
+
+<!-- ================= OVERLAY PLEIN ÉCRAN — OUVERTURE DE LA BOUTEILLE ================= -->
+<div class="fullscreen-bottle-overlay" id="fs-bottle-overlay">
+    <button class="fs-close-btn" onclick="fermerAnimationFullscreen()" aria-label="Fermer">✕</button>
+    <div class="fs-waves">
+        <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+            <path class="wave wave2" d="M-60,50 Q-35,40 -10,50 T40,50 T90,50 T140,50 T190,50 T240,50 T290,50 T340,50 V100 H-60 Z" fill="#0284c7" opacity="0.6"></path>
+            <path class="wave wave1" d="M-60,60 Q-35,50 -10,60 T40,60 T90,60 T140,60 T190,60 T240,60 T290,60 T340,60 V100 H-60 Z" fill="#0369a1" opacity="0.85"></path>
+        </svg>
+    </div>
+    <div class="fs-bottle-wrap">
+        <svg viewBox="0 0 46 104" xmlns="http://www.w3.org/2000/svg">
+            <rect x="17" y="16" width="12" height="20" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></rect>
+            <path d="M10,34 Q10,30 14,30 L32,30 Q36,30 36,34 L40,60 Q42,80 42,90 L42,96 Q42,104 34,104 L12,104 Q4,104 4,96 L4,90 Q4,80 6,60 Z" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></path>
+            <rect class="fs-cork" x="15" y="0" width="16" height="14" rx="3" fill="#b0855a" stroke="#7c5636" stroke-width="1.5"></rect>
+        </svg>
+    </div>
+    <div class="fs-paper" id="fs-paper">
+        <h3 id="fs-title"></h3>
+        <p class="fs-date" id="fs-date"></p>
+        <div class="fs-content" id="fs-content"></div>
+    </div>
+    <button class="fs-continue-btn" onclick="fermerAnimationFullscreen()">Continuer ✨</button>
 </div>
 
 <!-- ================= MODALE MOT DE PASSE NADA ================= -->
@@ -744,6 +812,7 @@
             document.getElementById('decrypted-date').innerText    = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}${modeAdmin ? ' — Verrou ignoré (Admin)' : ''}`;
             document.getElementById('decrypted-content').innerText = data.engagements;
             outputDiv.style.display = 'block';
+            lancerAnimationOuvertureFullscreen(data, modeAdmin);
             showToast(modeAdmin ? '🛡️ Ouverture forcée par Admin' : '✅ Enveloppe ouverte.', modeAdmin ? 'info' : 'success');
 
         } catch (e) {
@@ -753,6 +822,28 @@
                 : "❌ Codes PIN incorrects ou texte corrompu.";
             statusDiv.style.display = 'block';
         }
+    }
+
+    // ---- Animation plein écran : la bouteille s'ouvre, le message en sort ----
+    function lancerAnimationOuvertureFullscreen(data, modeAdmin) {
+        const overlay = document.getElementById('fs-bottle-overlay');
+        const badge = modeAdmin ? ' 🛡️' : '';
+        document.getElementById('fs-title').innerText   = `📄 Objectifs de ${data.prenom} ${data.nom}${badge}`;
+        document.getElementById('fs-date').innerText     = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`;
+        document.getElementById('fs-content').innerText  = data.engagements;
+
+        overlay.classList.remove('play');
+        void overlay.offsetWidth; // reflow pour pouvoir relancer l'animation à chaque ouverture
+        overlay.classList.add('show');
+        void overlay.offsetWidth;
+        overlay.classList.add('play');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function fermerAnimationFullscreen() {
+        const overlay = document.getElementById('fs-bottle-overlay');
+        overlay.classList.remove('show', 'play');
+        document.body.style.overflow = '';
     }
 </script>
 </body>
