@@ -173,18 +173,14 @@
         </button>
     </div>
 
-    <!-- ================= STEPPER NADA (3 étapes) ================= -->
-    <div class="stepper steps-3" id="stepper-nada" style="display:none;">
-        <button class="step active" id="step-nada" onclick="switchTab('nada')">
+    <!-- ================= STEPPER NADA (2 étapes) ================= -->
+    <div class="stepper steps-2" id="stepper-nada" style="display:none;">
+        <button class="step active" id="step-write-nada" onclick="switchTab('write')">
             <span class="step-circle">1</span>
-            <span class="step-label">Clé de session</span>
-        </button>
-        <button class="step" id="step-write-nada" onclick="switchTab('write')">
-            <span class="step-circle">2</span>
             <span class="step-label">Écrire (test)</span>
         </button>
         <button class="step" id="step-read-nada" onclick="switchTab('read')">
-            <span class="step-circle">3</span>
+            <span class="step-circle">2</span>
             <span class="step-label">Jour de l'entretien</span>
         </button>
     </div>
@@ -201,43 +197,10 @@
         </button>
     </div>
 
-    <!-- ================= ÉTAPE NADA — réservée au profil Nada ================= -->
-    <div id="section-nada" style="display: none;">
-        <label>Définir le Code PIN de Nada :</label>
-        <div class="pin-wrapper">
-            <input type="password" id="nada-secret-setup" placeholder="Ex: 1234" inputmode="numeric" maxlength="8">
-            <button type="button" class="toggle-eye" onclick="togglePin('nada-secret-setup', this)" aria-label="Afficher le code">👁️</button>
-        </div>
-
-        <button class="main-btn" onclick="genererJetonNada()">🔑 Créer le jeton stagiaire</button>
-
-        <div id="output-nada" class="output-box">
-            <p style="margin:0 0 8px 0; font-weight:bold; color:var(--primary);">Jeton à envoyer aux stagiaires :</p>
-            <div class="copy-row">
-                <div id="jeton-text" style="font-family: monospace; background: #e2e8f0; padding: 12px; border-radius: 6px; font-size: 13px; word-break: break-all; user-select: all; text-align: center; font-weight: bold;"></div>
-                <button type="button" class="copy-btn" onclick="copyText(document.getElementById('jeton-text').innerText, this)">📋 Copier</button>
-            </div>
-            <p class="instruction">📱 Envoyez ce code par SMS/WhatsApp à vos stagiaires.</p>
-        </div>
-    </div>
-
     <!-- ================= ÉTAPE ÉCRIRE — commune aux deux profils ================= -->
     <div id="section-write" style="display: none;">
 
-        <div id="gatekeeper-zone">
-            <div class="lock-notice">
-                🔒 Cet espace est protégé. Veuillez saisir la clé de session fournie par Nada pour commencer à écrire vos objectifs.
-            </div>
-            <label>Saisir la clé de session de Nada :</label>
-            <input type="text" id="jeton-input-stagiaire" placeholder="Collez le code à 16 caractères ici" autocomplete="off">
-            <button class="main-btn" style="background: #2563eb;" onclick="verifierEtDebloquerFormulaire()">🔓 Valider la clé et commencer</button>
-        </div>
-
-        <div id="form-stagiaire" style="display: none;">
-            <div class="lock-notice" style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;">
-                ✅ Clé de session validée avec succès. Vous pouvez rédiger vos engagements.
-            </div>
-
+        <div id="form-stagiaire" style="display: block;">
             <div class="row">
                 <div>
                     <label>Prénom :</label>
@@ -361,11 +324,6 @@
         updateCharCount();
         afficherDureeVerrou();
 
-        const savedJeton = localStorage.getItem('pep_jeton_stagiaire');
-        if (savedJeton) {
-            document.getElementById('jeton-input-stagiaire').value = savedJeton;
-        }
-
         const savedProfil = localStorage.getItem('pep_profil');
         if (savedProfil === 'stagiaire') {
             choisirProfil(savedProfil, true);
@@ -379,10 +337,17 @@
     // ============================================================
     // MOT DE PASSE ESPACE NADA  → "nada2025"
     // CODE ADMIN (débloque tout) → "admin2025"
-    // Pour changer : CryptoJS.SHA256("nouveauMDP").toString()
+    // CODE PIN DE NADA pour sceller/ouvrir les enveloppes → "0000"
+    //   (À changer dès que Nada a choisi son code : remplacer "0000"
+    //    ci-dessous par le code qu'elle veut, puis redéployer.
+    //    C'est CE code qu'elle devra taper le jour de l'entretien,
+    //    en plus du code PIN personnel du stagiaire.)
+    // Pour changer les mots de passe : CryptoJS.SHA256("nouveauMDP").toString()
     // ============================================================
     const NADA_PASSWORD_HASH  = CryptoJS.SHA256("nada2025").toString();
     const ADMIN_PASSWORD_HASH = CryptoJS.SHA256("admin2025").toString();
+    const NADA_SEAL_PIN       = "0000";
+    const JETON_NADA_FIXE     = CryptoJS.SHA256(NADA_SEAL_PIN).toString().substring(0, 16);
 
     function estAdmin(valeur) {
         return CryptoJS.SHA256(valeur).toString() === ADMIN_PASSWORD_HASH;
@@ -429,18 +394,13 @@
             document.getElementById('subtitle').textContent = 'Version Mobile Sécurisée — Espace Nada';
             document.getElementById('stepper-nada').style.display = 'flex';
             document.getElementById('stepper-stagiaire').style.display = 'none';
-            document.getElementById('section-nada').style.display = 'block';
-            document.getElementById('switch-profile-write').style.display = 'none';
-            setActiveStep('nada', 3);
         } else {
             document.getElementById('subtitle').textContent = 'Version Mobile Sécurisée — Espace Stagiaire';
             document.getElementById('stepper-nada').style.display = 'none';
             document.getElementById('stepper-stagiaire').style.display = 'flex';
-            document.getElementById('section-nada').style.display = 'none';
-            document.getElementById('section-write').style.display = 'block';
-            document.getElementById('switch-profile-write').style.display = 'block';
-            setActiveStep('write', 2);
         }
+        document.getElementById('section-write').style.display = 'block';
+        setActiveStep('write');
 
         if (!depuisSauvegarde) showToast(profil === 'nada' ? '👩‍💼 Espace Nada activé' : '🎓 Espace Stagiaire activé', 'success');
     }
@@ -453,12 +413,9 @@
 
     // ---- Navigation ----
     function switchTab(tab) {
-        const sections = ['nada', 'write', 'read'];
+        const sections = ['write', 'read'];
         sections.forEach(s => {
             const section = document.getElementById(`section-${s}`);
-            // L'étape Nada n'est jamais montrée au profil stagiaire
-            if (s === 'nada' && profilActuel !== 'nada') return;
-
             const isTarget = (s === tab);
             section.style.display = isTarget ? 'block' : 'none';
             if (isTarget) {
@@ -468,24 +425,16 @@
             }
         });
 
-        document.getElementById('switch-profile-write').style.display =
-            (profilActuel === 'stagiaire' && tab === 'write') ? 'block' : 'none';
+        document.getElementById('switch-profile-write').style.display = (tab === 'write') ? 'block' : 'none';
 
-        const stepNumber = (profilActuel === 'nada') ? 3 : 2;
-        setActiveStep(tab, stepNumber);
+        setActiveStep(tab);
         window.scrollTo(0, 0);
     }
 
-    function setActiveStep(tab, totalSteps) {
-        const prefix = (profilActuel === 'nada') ? '-nada' : (totalSteps === 2 ? '-stag' : '');
-        ['nada', 'write', 'read'].forEach(s => {
-            let id;
-            if (profilActuel === 'nada') {
-                id = (s === 'nada') ? 'step-nada' : `step-${s}-nada`;
-            } else {
-                id = `step-${s}-stag`;
-            }
-            const el = document.getElementById(id);
+    function setActiveStep(tab) {
+        const suffix = (profilActuel === 'nada') ? '-nada' : '-stag';
+        ['write', 'read'].forEach(s => {
+            const el = document.getElementById(`step-${s}${suffix}`);
             if (el) el.classList.toggle('active', s === tab);
         });
     }
@@ -573,37 +522,7 @@
         return /^[0-9]{4,8}$/.test(pin);
     }
 
-    // ÉTAPE NADA (1) : génération du jeton
-    function genererJetonNada() {
-        const passwordNada = document.getElementById('nada-secret-setup').value;
-        if (!isPinValide(passwordNada)) {
-            showToast('❌ Entrez un code PIN de 4 à 8 chiffres.', 'error');
-            return;
-        }
-        const jeton = CryptoJS.SHA256(passwordNada).toString().substring(0, 16);
-        document.getElementById('jeton-text').innerText = jeton;
-        document.getElementById('output-nada').style.display = 'block';
-        showToast('✅ Jeton créé avec succès.', 'success');
-    }
-
-    // ÉTAPE ÉCRIRE : déverrouillage avec la clé de session
-    function verifierEtDebloquerFormulaire() {
-        const jetonSaisi = document.getElementById('jeton-input-stagiaire').value.trim();
-
-        if (jetonSaisi.length < 10) {
-            showToast('❌ Code invalide. Collez le jeton complet à 16 caractères fourni par Nada.', 'error');
-            return;
-        }
-
-        localStorage.setItem('pep_jeton_stagiaire', jetonSaisi);
-
-        document.getElementById('gatekeeper-zone').style.display = 'none';
-        document.getElementById('form-stagiaire').style.display = 'block';
-        showToast('🔓 Accès débloqué, bonne rédaction !', 'success');
-    }
-
     function scellerEnveloppeStagiaire() {
-        const jetonNada = document.getElementById('jeton-input-stagiaire').value.trim();
         const prenom = document.getElementById('prenom').value.trim();
         const nom = document.getElementById('nom').value.trim();
         const engagements = document.getElementById('engagements').value.trim();
@@ -619,7 +538,7 @@
         }
 
         const data = { prenom: prenom, nom: nom, engagements: engagements, timestamp: Date.now() };
-        const cleChiffrement = keyStagiaire + "@pep@" + jetonNada;
+        const cleChiffrement = keyStagiaire + "@pep@" + JETON_NADA_FIXE;
         const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), cleChiffrement).toString();
 
         const nomFichier = `engagements_${prenom}_${nom}.txt`;
@@ -648,8 +567,7 @@
         document.getElementById('nom').value = '';
         document.getElementById('engagements').value = '';
         document.getElementById('key-stagiaire').value = '';
-        document.getElementById('gatekeeper-zone').style.display = 'block';
-        document.getElementById('form-stagiaire').style.display = 'none';
+        document.getElementById('form-stagiaire').style.display = 'block';
         document.getElementById('success-stagiaire').style.display = 'none';
         updateCharCount();
     }
