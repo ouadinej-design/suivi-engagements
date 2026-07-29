@@ -126,6 +126,66 @@
 
         .switch-profile { display: block; text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 18px; background: none; border: none; cursor: pointer; width: 100%; padding: 6px; text-decoration: underline; }
 
+        /* ==================== SCÈNE BOUTEILLE À LA MER ==================== */
+        .bottle-scene {
+            position: relative; width: 100%; height: 190px; border-radius: 12px; overflow: hidden;
+            margin-bottom: 16px; background: linear-gradient(180deg, #bae6fd 0%, #7dd3fc 45%, #0ea5e9 100%);
+        }
+        .bottle-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .wave { animation: waveShift 3.6s linear infinite; }
+        .wave.wave2 { animation-duration: 5s; animation-direction: reverse; }
+        @keyframes waveShift {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-60px); }
+        }
+        .bottle-wrap {
+            position: absolute; left: 50%; top: 58%; width: 46px; height: 90px;
+            transform: translate(-50%, -50%);
+        }
+        .bottle-wrap.toss-anim { animation: bottleToss 1.4s cubic-bezier(.25,.8,.3,1) both, bottleBob 2.6s ease-in-out 1.4s infinite; }
+        .bottle-wrap.open-anim { animation: bottleBob 2.6s ease-in-out infinite; }
+        @keyframes bottleToss {
+            0%   { transform: translate(60px, -160px) rotate(-70deg); opacity: 0; }
+            15%  { opacity: 1; }
+            55%  { transform: translate(-6px, -6px) rotate(25deg); }
+            75%  { transform: translate(3px, 6px) rotate(-8deg); }
+            100% { transform: translate(-50%, -50%) rotate(0deg); }
+        }
+        @keyframes bottleBob {
+            0%, 100% { transform: translate(-50%, -50%) rotate(-3deg); }
+            50%      { transform: translate(-50%, calc(-50% - 7px)) rotate(3deg); }
+        }
+        .splash-ring {
+            position: absolute; left: 50%; top: 58%; width: 10px; height: 10px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.8); transform: translate(-50%,-50%); opacity: 0;
+        }
+        .toss-anim ~ .splash-ring, .bottle-scene.play .splash-ring { animation: splashPop 0.9s ease-out 1.15s 1; }
+        .splash-ring.s2 { animation-delay: 1.25s !important; }
+        .splash-ring.s3 { animation-delay: 1.35s !important; }
+        @keyframes splashPop {
+            0%   { width: 6px; height: 6px; opacity: 0.9; }
+            100% { width: 70px; height: 26px; opacity: 0; }
+        }
+        .cork {
+            transform-origin: 50% 100%;
+        }
+        .open-scene .cork { animation: corkPop 0.7s ease-in 0.5s both; }
+        @keyframes corkPop {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-90px) rotate(240deg); opacity: 0; }
+        }
+        .open-scene .paper-roll {
+            animation: paperRise 0.8s ease-out 0.9s both;
+        }
+        @keyframes paperRise {
+            0%   { transform: translateY(4px); opacity: 0; }
+            100% { transform: translateY(-14px); opacity: 1; }
+        }
+        .bottle-caption {
+            position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+            font-size: 12px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+        }
+
         /* ---- Modale protection Nada ---- */
         .modal-overlay {
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
@@ -227,6 +287,24 @@
         </div>
 
         <div id="success-stagiaire" class="output-box" style="border-color: var(--success); background: #f0fdf4; text-align: center;">
+            <div class="bottle-scene" id="toss-scene">
+                <svg viewBox="0 0 300 160" preserveAspectRatio="none">
+                    <path class="wave wave2" d="M-60,95 Q-35,85 -10,95 T40,95 T90,95 T140,95 T190,95 T240,95 T290,95 T340,95 V160 H-60 Z" fill="#0284c7" opacity="0.6"></path>
+                    <path class="wave wave1" d="M-60,105 Q-35,95 -10,105 T40,105 T90,105 T140,105 T190,105 T240,105 T290,105 T340,105 V160 H-60 Z" fill="#0369a1" opacity="0.85"></path>
+                </svg>
+                <div class="bottle-wrap toss-anim" id="bottle-toss">
+                    <svg viewBox="0 0 46 104" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="18" y="6" width="10" height="34" rx="2" fill="#fdf6e3"></rect>
+                        <rect x="17" y="16" width="12" height="20" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></rect>
+                        <path d="M10,34 Q10,30 14,30 L32,30 Q36,30 36,34 L40,60 Q42,80 42,90 L42,96 Q42,104 34,104 L12,104 Q4,104 4,96 L4,90 Q4,80 6,60 Z" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></path>
+                        <rect class="cork" x="15" y="0" width="16" height="14" rx="3" fill="#b0855a" stroke="#7c5636" stroke-width="1.5"></rect>
+                    </svg>
+                </div>
+                <div class="splash-ring"></div>
+                <div class="splash-ring s2"></div>
+                <div class="splash-ring s3"></div>
+                <div class="bottle-caption">🌊 Votre bouteille est jetée à la mer...</div>
+            </div>
             <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 18px;">C'est scellé ! 🔒</h3>
             <p style="font-size: 14px; margin-bottom: 5px;">Vos engagements ont été effacés de l'écran par sécurité.</p>
             <p style="font-weight: bold; color: var(--primary); font-size: 14px;" id="filename-downloaded"></p>
@@ -277,6 +355,20 @@
         <div id="status-message" class="alert alert-danger"></div>
 
         <div id="output-decrypt" class="output-box" style="border-color: var(--success); background: #f0fdf4;">
+            <div class="bottle-scene open-scene" id="open-scene">
+                <svg viewBox="0 0 300 160" preserveAspectRatio="none">
+                    <path class="wave wave2" d="M-60,112 Q-35,102 -10,112 T40,112 T90,112 T140,112 T190,112 T240,112 T290,112 T340,112 V160 H-60 Z" fill="#0284c7" opacity="0.5"></path>
+                </svg>
+                <div class="bottle-wrap open-anim">
+                    <svg viewBox="0 0 46 104" xmlns="http://www.w3.org/2000/svg">
+                        <rect class="paper-roll" x="18" y="-6" width="10" height="34" rx="2" fill="#fdf6e3"></rect>
+                        <rect x="17" y="16" width="12" height="20" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></rect>
+                        <path d="M10,34 Q10,30 14,30 L32,30 Q36,30 36,34 L40,60 Q42,80 42,90 L42,96 Q42,104 34,104 L12,104 Q4,104 4,96 L4,90 Q4,80 6,60 Z" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></path>
+                        <rect class="cork" x="15" y="0" width="16" height="14" rx="3" fill="#b0855a" stroke="#7c5636" stroke-width="1.5"></rect>
+                    </svg>
+                </div>
+                <div class="bottle-caption">🍾 Le bouchon saute... votre message apparaît !</div>
+            </div>
             <h3 style="margin:0 0 5px 0; color: #166534; font-size: 16px;" id="decrypted-title"></h3>
             <p style="font-size: 12px; color: #64748b; margin: 0 0 10px 0;" id="decrypted-date"></p>
             <div id="decrypted-content" style="white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #1e293b; background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;"></div>
