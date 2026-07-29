@@ -367,8 +367,12 @@
         }
 
         const savedProfil = localStorage.getItem('pep_profil');
-        if (savedProfil === 'nada' || savedProfil === 'stagiaire') {
+        if (savedProfil === 'stagiaire') {
             choisirProfil(savedProfil, true);
+        } else if (savedProfil === 'nada') {
+            // Sécurité : ne jamais reconnecter automatiquement à l'espace Nada.
+            // Le mot de passe doit être ressaisi à chaque nouvelle visite.
+            localStorage.removeItem('pep_profil');
         }
     });
 
