@@ -230,6 +230,27 @@
         .fullscreen-bottle-overlay.play .fs-continue-btn { animation: fsFadeIn 1s ease-out 7s both; }
         @keyframes fsFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 
+        /* ==================== VUE FINALE — TEXTE SEUL PLEIN ÉCRAN ==================== */
+        .fs-final-view {
+            position: absolute; inset: 0; z-index: 10; display: none;
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px 20px; text-align: center;
+        }
+        .fs-final-content { max-width: 480px; width: 100%; max-height: 55vh; overflow-y: auto; }
+        .fs-final-content h2 { color: #166534; font-size: 20px; margin: 0 0 8px; }
+        .fs-final-date { color: #64748b; font-size: 13px; margin: 0 0 20px; }
+        .fs-final-text {
+            font-size: 18px; line-height: 1.7; color: #1e293b; white-space: pre-wrap; text-align: left;
+            background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .fs-final-actions { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+        .fs-action-btn {
+            background: #0369a1; color: #fff; border: none; border-radius: 24px; padding: 14px;
+            font-weight: 700; font-size: 15px; cursor: pointer;
+        }
+        .fs-retour-btn { background: #64748b; }
+
         /* ---- Modale protection Nada ---- */
         .modal-overlay {
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
@@ -445,7 +466,20 @@
         <p class="fs-date" id="fs-date"></p>
         <div class="fs-content" id="fs-content"></div>
     </div>
-    <button class="fs-continue-btn" onclick="fermerAnimationFullscreen()">Continuer ✨</button>
+    <button class="fs-continue-btn" onclick="afficherTexteFinal()">Continuer ✨</button>
+
+    <div class="fs-final-view" id="fs-final-view">
+        <div class="fs-final-content">
+            <h2 id="fs-final-title"></h2>
+            <p class="fs-final-date" id="fs-final-date"></p>
+            <div class="fs-final-text" id="fs-final-text"></div>
+        </div>
+        <div class="fs-final-actions">
+            <button class="fs-action-btn" onclick="enregistrerTexteFinal()">💾 Enregistrer</button>
+            <button class="fs-action-btn" onclick="partagerTexteFinal()">📤 Transférer</button>
+            <button class="fs-action-btn fs-retour-btn" onclick="quitterApp()">⬅️ Retour</button>
+        </div>
+    </div>
 </div>
 
 <!-- ================= MODALE MOT DE PASSE NADA ================= -->
@@ -832,6 +866,8 @@
         document.getElementById('fs-date').innerText     = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`;
         document.getElementById('fs-content').innerText  = data.engagements;
 
+        document.getElementById('fs-final-view').style.display = 'none';
+
         overlay.classList.remove('play');
         void overlay.offsetWidth; // reflow pour pouvoir relancer l'animation à chaque ouverture
         overlay.classList.add('show');
@@ -843,7 +879,57 @@
     function fermerAnimationFullscreen() {
         const overlay = document.getElementById('fs-bottle-overlay');
         overlay.classList.remove('show', 'play');
+        document.getElementById('fs-final-view').style.display = 'none';
         document.body.style.overflow = '';
+    }
+
+    // ---- Vue finale : uniquement le texte, plein écran ----
+    function afficherTexteFinal() {
+        document.getElementById('fs-final-title').innerText = document.getElementById('fs-title').innerText;
+        document.getElementById('fs-final-date').innerText  = document.getElementById('fs-date').innerText;
+        document.getElementById('fs-final-text').innerText  = document.getElementById('fs-content').innerText;
+        document.getElementById('fs-final-view').style.display = 'flex';
+    }
+
+    function texteCompletFinal() {
+        const titre = document.getElementById('fs-final-title').innerText;
+        const date  = document.getElementById('fs-final-date').innerText;
+        const texte = document.getElementById('fs-final-text').innerText;
+        return `${titre}\n${date}\n\n${texte}`;
+    }
+
+    function enregistrerTexteFinal() {
+        const blob = new Blob([texteCompletFinal()], { type: 'text/plain;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = 'mes-engagements.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('💾 Fichier enregistré.', 'success');
+    }
+
+    async function partagerTexteFinal() {
+        const contenu = texteCompletFinal();
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: document.getElementById('fs-final-title').innerText, text: contenu });
+            } catch (e) { /* partage annulé par l'utilisateur */ }
+        } else {
+            try {
+                await navigator.clipboard.writeText(contenu);
+                showToast('📋 Texte copié dans le presse-papiers.', 'success');
+            } catch (e) {
+                showToast('❌ Le partage direct n\'est pas disponible ici.', 'error');
+            }
+        }
+    }
+
+    function quitterApp() {
+        fermerAnimationFullscreen();
+        changerProfil();
     }
 </script>
 </body>
