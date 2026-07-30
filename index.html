@@ -460,10 +460,8 @@
     <div class="fs-video-scrim"></div>
     <button class="fs-close-btn" onclick="fermerAnimationFullscreen()" aria-label="Fermer">✕</button>
 
-    <!-- Étape 1 : dérive en mer -->
-    <div class="fs-stage" id="fs-stage-floating">
-        <button class="fs-action-btn" onclick="fsWashAshore()">▶️ Faire échouer sur la plage</button>
-    </div>
+    <!-- Étape 1 : dérive en mer (passage automatique) -->
+    <div class="fs-stage" id="fs-stage-floating"></div>
 
     <!-- Étape 2 : échouée sur la plage -->
     <div class="fs-stage" id="fs-stage-landed">
@@ -878,6 +876,7 @@
 
     // ---- Animation plein écran : la bouteille s'ouvre, le message en sort ----
     let fsData = null;
+    let fsFloatTimer = null;
 
     function fsShowStage(id) {
         ['fs-stage-floating', 'fs-stage-landed', 'fs-stage-revealed', 'fs-stage-opened'].forEach(s => {
@@ -904,9 +903,12 @@
 
         overlay.classList.add('show');
         document.body.style.overflow = 'hidden';
+
+        clearTimeout(fsFloatTimer);
+        fsFloatTimer = setTimeout(fsWashAshore, 3500);
     }
 
-    // Étape 1 → 2 : la bouteille échoue sur la plage
+    // Étape 1 → 2 : la bouteille échoue sur la plage (automatique)
     function fsWashAshore() {
         fsShowStage('fs-stage-landed');
     }
@@ -937,6 +939,7 @@
 
     function fermerAnimationFullscreen() {
         const overlay = document.getElementById('fs-bottle-overlay');
+        clearTimeout(fsFloatTimer);
         overlay.classList.remove('show');
         document.getElementById('fs-final-view').style.display = 'none';
         document.body.style.overflow = '';
