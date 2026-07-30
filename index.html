@@ -186,7 +186,7 @@
             font-size: 12px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.35);
         }
 
-        /* ==================== OVERLAY PLEIN ÉCRAN — OUVERTURE ==================== */
+        /* ==================== OVERLAY PLEIN ÉCRAN — OUVERTURE INTERACTIVE ==================== */
         .fullscreen-bottle-overlay {
             position: fixed; inset: 0; z-index: 2000; display: none;
             background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 45%, #0369a1 100%);
@@ -200,10 +200,35 @@
         }
         .fs-waves { position: absolute; bottom: 0; left: 0; width: 100%; height: 35%; z-index: 1; }
         .fs-waves svg { width: 100%; height: 100%; }
+
+        .fs-stage { position: relative; z-index: 2; display: none; flex-direction: column; align-items: center; gap: 16px; }
+        .fs-stage-caption {
+            background: rgba(255,255,255,0.9); color: #0c4a6e; font-weight: 700; font-size: 14px;
+            padding: 10px 18px; border-radius: 12px; max-width: 300px; text-align: center;
+        }
+        .fs-emoji-bottle { font-size: 76px; filter: drop-shadow(0 10px 12px rgba(0,0,0,0.3)); }
+        .fs-emoji-bottle.fs-float { animation: fsFloatBob 2.6s ease-in-out infinite; }
+        @keyframes fsFloatBob {
+            0%, 100% { transform: translateY(0) rotate(-8deg); }
+            50%      { transform: translateY(-14px) rotate(4deg); }
+        }
+        .fs-emoji-bottle.fs-landed-pose { transform: rotate(35deg); }
+        .fs-emoji-bottle.rubbing { animation: fsWiggle 0.15s linear infinite; }
+        @keyframes fsWiggle {
+            0%   { transform: rotate(30deg); }
+            50%  { transform: rotate(40deg); }
+            100% { transform: rotate(30deg); }
+        }
+        .fs-label-box {
+            background: #0c4a6e; color: #fde68a; font-family: 'Courier New', monospace; font-weight: bold;
+            padding: 10px 18px; border-radius: 8px; letter-spacing: 0.4px; font-size: 15px;
+            opacity: 0; animation: fsFadeIn 0.7s ease-out 0.1s both;
+        }
+
         .fs-bottle-wrap { position: relative; width: 110px; height: 240px; z-index: 2; flex-shrink: 0; }
         .fs-bottle-wrap svg { width: 100%; height: 100%; }
         .fs-cork { transform-origin: 50% 100%; }
-        .fullscreen-bottle-overlay.play .fs-cork { animation: fsCorkPop 2s ease-in 1.8s both; }
+        #fs-stage-opened.play .fs-cork { animation: fsCorkPop 1s ease-in 0.3s both; }
         @keyframes fsCorkPop {
             0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(-170px) rotate(280deg); opacity: 0; }
@@ -214,7 +239,7 @@
             padding: 20px; max-width: 340px; width: 88%; max-height: 46vh; overflow-y: auto;
             transform: translateY(50px) scale(0.85); opacity: 0;
         }
-        .fullscreen-bottle-overlay.play .fs-paper { animation: fsPaperOut 2s ease-out 4.2s both; }
+        #fs-stage-opened.play .fs-paper { animation: fsPaperOut 1s ease-out 1.1s both; }
         @keyframes fsPaperOut {
             0%   { transform: translateY(50px) scale(0.85); opacity: 0; }
             100% { transform: translateY(0) scale(1); opacity: 1; }
@@ -227,7 +252,7 @@
             padding: 13px 28px; font-weight: 800; font-size: 14px; cursor: pointer; z-index: 3;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0;
         }
-        .fullscreen-bottle-overlay.play .fs-continue-btn { animation: fsFadeIn 1s ease-out 7s both; }
+        #fs-stage-opened.play .fs-continue-btn { animation: fsFadeIn 0.6s ease-out 2s both; }
         @keyframes fsFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 
         /* ==================== VUE FINALE — TEXTE SEUL PLEIN ÉCRAN ==================== */
@@ -454,19 +479,45 @@
             <path class="wave wave1" d="M-60,60 Q-35,50 -10,60 T40,60 T90,60 T140,60 T190,60 T240,60 T290,60 T340,60 V100 H-60 Z" fill="#0369a1" opacity="0.85"></path>
         </svg>
     </div>
-    <div class="fs-bottle-wrap">
-        <svg viewBox="0 0 46 104" xmlns="http://www.w3.org/2000/svg">
-            <rect x="17" y="16" width="12" height="20" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></rect>
-            <path d="M10,34 Q10,30 14,30 L32,30 Q36,30 36,34 L40,60 Q42,80 42,90 L42,96 Q42,104 34,104 L12,104 Q4,104 4,96 L4,90 Q4,80 6,60 Z" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></path>
-            <rect class="fs-cork" x="15" y="0" width="16" height="14" rx="3" fill="#b0855a" stroke="#7c5636" stroke-width="1.5"></rect>
-        </svg>
+
+    <!-- Étape 1 : dérive en mer -->
+    <div class="fs-stage" id="fs-stage-floating">
+        <div class="fs-emoji-bottle fs-float">🍾</div>
+        <p class="fs-stage-caption">🌊 La bouteille dérive en mer...</p>
+        <button class="fs-action-btn" onclick="fsWashAshore()">▶️ Faire échouer sur la plage</button>
     </div>
-    <div class="fs-paper" id="fs-paper">
-        <h3 id="fs-title"></h3>
-        <p class="fs-date" id="fs-date"></p>
-        <div class="fs-content" id="fs-content"></div>
+
+    <!-- Étape 2 : échouée sur la plage -->
+    <div class="fs-stage" id="fs-stage-landed">
+        <div class="fs-emoji-bottle fs-landed-pose" id="fs-emoji-landed">🍾</div>
+        <p class="fs-stage-caption">🏖️ Échouée sur la plage. Frottez l'étiquette pour révéler le nom.</p>
+        <button class="fs-action-btn" id="fs-rub-btn" onclick="fsRubLabel()">✋ Frotter l'étiquette</button>
     </div>
-    <button class="fs-continue-btn" onclick="afficherTexteFinal()">Continuer ✨</button>
+
+    <!-- Étape 3 : nom révélé -->
+    <div class="fs-stage" id="fs-stage-revealed">
+        <div class="fs-emoji-bottle fs-landed-pose">🍾</div>
+        <div class="fs-label-box" id="fs-label-box"></div>
+        <p class="fs-stage-caption">✨ Le nom apparaît ! Retirez le bouchon pour lire la lettre.</p>
+        <button class="fs-action-btn" onclick="fsOpenCork()">🔓 Ouvrir le bouchon</button>
+    </div>
+
+    <!-- Étape 4 : bouchon qui saute + message qui sort -->
+    <div class="fs-stage" id="fs-stage-opened">
+        <div class="fs-bottle-wrap">
+            <svg viewBox="0 0 46 104" xmlns="http://www.w3.org/2000/svg">
+                <rect x="17" y="16" width="12" height="20" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></rect>
+                <path d="M10,34 Q10,30 14,30 L32,30 Q36,30 36,34 L40,60 Q42,80 42,90 L42,96 Q42,104 34,104 L12,104 Q4,104 4,96 L4,90 Q4,80 6,60 Z" fill="#4c8c6b" opacity="0.55" stroke="#2f6b4d" stroke-width="1.5"></path>
+                <rect class="fs-cork" x="15" y="0" width="16" height="14" rx="3" fill="#b0855a" stroke="#7c5636" stroke-width="1.5"></rect>
+            </svg>
+        </div>
+        <div class="fs-paper" id="fs-paper">
+            <h3 id="fs-title"></h3>
+            <p class="fs-date" id="fs-date"></p>
+            <div class="fs-content" id="fs-content"></div>
+        </div>
+        <button class="fs-continue-btn" onclick="afficherTexteFinal()">Continuer ✨</button>
+    </div>
 
     <div class="fs-final-view" id="fs-final-view">
         <div class="fs-final-content">
@@ -859,26 +910,71 @@
     }
 
     // ---- Animation plein écran : la bouteille s'ouvre, le message en sort ----
+    let fsData = null;
+
+    function fsShowStage(id) {
+        ['fs-stage-floating', 'fs-stage-landed', 'fs-stage-revealed', 'fs-stage-opened'].forEach(s => {
+            document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
+        });
+    }
+
     function lancerAnimationOuvertureFullscreen(data, modeAdmin) {
         const overlay = document.getElementById('fs-bottle-overlay');
         const badge = modeAdmin ? ' 🛡️' : '';
-        document.getElementById('fs-title').innerText   = `📄 Objectifs de ${data.prenom} ${data.nom}${badge}`;
-        document.getElementById('fs-date').innerText     = `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`;
-        document.getElementById('fs-content').innerText  = data.engagements;
+        fsData = {
+            prenom: data.prenom,
+            nom: data.nom,
+            titre: `📄 Objectifs de ${data.prenom} ${data.nom}${badge}`,
+            date: `Scellé le : ${new Date(data.timestamp).toLocaleString('fr-FR')}`,
+            texte: data.engagements
+        };
 
         document.getElementById('fs-final-view').style.display = 'none';
+        document.getElementById('fs-emoji-landed').classList.remove('rubbing');
+        document.getElementById('fs-stage-opened').classList.remove('play');
+        document.getElementById('fs-rub-btn').disabled = false;
+        document.getElementById('fs-rub-btn').innerText = "✋ Frotter l'étiquette";
+        fsShowStage('fs-stage-floating');
 
-        overlay.classList.remove('play');
-        void overlay.offsetWidth; // reflow pour pouvoir relancer l'animation à chaque ouverture
         overlay.classList.add('show');
-        void overlay.offsetWidth;
-        overlay.classList.add('play');
         document.body.style.overflow = 'hidden';
+    }
+
+    // Étape 1 → 2 : la bouteille échoue sur la plage
+    function fsWashAshore() {
+        fsShowStage('fs-stage-landed');
+    }
+
+    // Étape 2 → 3 : on frotte l'étiquette, le nom apparaît
+    function fsRubLabel() {
+        const btn = document.getElementById('fs-rub-btn');
+        const bottle = document.getElementById('fs-emoji-landed');
+        btn.disabled = true;
+        btn.innerText = '🧴 Nettoyage en cours...';
+        bottle.classList.add('rubbing');
+        setTimeout(() => {
+            bottle.classList.remove('rubbing');
+            document.getElementById('fs-label-box').innerText = `STAGIAIRE : ${fsData.prenom} ${fsData.nom}`;
+            fsShowStage('fs-stage-revealed');
+        }, 1500);
+    }
+
+    // Étape 3 → 4 : on retire le bouchon, le message sort de la bouteille
+    function fsOpenCork() {
+        document.getElementById('fs-title').innerText   = fsData.titre;
+        document.getElementById('fs-date').innerText    = fsData.date;
+        document.getElementById('fs-content').innerText = fsData.texte;
+
+        fsShowStage('fs-stage-opened');
+        const stage = document.getElementById('fs-stage-opened');
+        stage.classList.remove('play');
+        void stage.offsetWidth; // reflow pour relancer l'animation
+        stage.classList.add('play');
     }
 
     function fermerAnimationFullscreen() {
         const overlay = document.getElementById('fs-bottle-overlay');
-        overlay.classList.remove('show', 'play');
+        overlay.classList.remove('show');
         document.getElementById('fs-final-view').style.display = 'none';
         document.body.style.overflow = '';
     }
