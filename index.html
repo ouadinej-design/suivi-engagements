@@ -211,12 +211,17 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.25);
         }
         .fs-label-box {
-            background: #0c4a6e; color: #fde68a; font-family: 'Courier New', monospace; font-weight: bold;
-            padding: 10px 18px; border-radius: 8px; letter-spacing: 0.4px; font-size: 15px;
-            opacity: 0; animation: fsFadeIn 0.7s ease-out 0.1s both;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            position: absolute; top: 57%; left: 50%; width: 76%; max-width: 320px;
+            transform: translate(-50%, -50%) rotate(-24deg);
+            background: rgba(253, 246, 227, 0.92); color: #1c1917; font-family: 'Courier New', monospace; font-weight: bold;
+            padding: 8px 14px; border-radius: 4px; letter-spacing: 0.3px; font-size: 14px; text-align: center;
+            border: 1px solid rgba(120, 90, 50, 0.6);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+            opacity: 0; animation: fsFadeIn 0.9s ease-out 0.1s both;
+            z-index: 2;
         }
         @keyframes fsFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        #fs-stage-revealed { justify-content: flex-end; padding-bottom: 60px; height: 100%; width: 100%; }
 
         /* ==================== VUE FINALE — TEXTE SEUL PLEIN ÉCRAN ==================== */
         .fs-final-view {
