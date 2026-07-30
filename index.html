@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Suivi des Engagements</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --primary: #1e3c72;
@@ -234,8 +235,13 @@
         .fs-final-content h2 { color: #166534; font-size: 20px; margin: 0 0 8px; }
         .fs-final-date { color: #64748b; font-size: 13px; margin: 0 0 20px; }
         .fs-final-text {
-            font-size: 18px; line-height: 1.7; color: #1e293b; white-space: pre-wrap; text-align: left;
+            font-size: 17px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; text-align: left;
             background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .fs-final-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .fs-final-list li {
+            background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+            padding: 10px 12px; font-size: 16px; line-height: 1.5; color: #1e293b;
         }
         .fs-final-actions { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
         .fs-action-btn {
@@ -463,7 +469,8 @@
             <div class="fs-final-text" id="fs-final-text"></div>
         </div>
         <div class="fs-final-actions">
-            <button class="fs-action-btn" onclick="enregistrerTexteFinal()">💾 Enregistrer</button>
+            <button class="fs-action-btn" onclick="enregistrerPDF()">📄 Enregistrer en PDF</button>
+            <button class="fs-action-btn" onclick="enregistrerTexteFinal()">💾 Enregistrer (.txt)</button>
             <button class="fs-action-btn" onclick="partagerTexteFinal()">📤 Transférer</button>
             <button class="fs-action-btn fs-retour-btn" onclick="quitterApp()">⬅️ Retour</button>
         </div>
@@ -1024,18 +1031,57 @@
     }
 
     // ---- Vue finale : uniquement le texte, plein écran ----
+    function echapperHTML(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function afficherTexteFinal() {
         document.getElementById('fs-final-title').innerText = fsData.titre;
         document.getElementById('fs-final-date').innerText  = fsData.date;
-        document.getElementById('fs-final-text').innerText  = fsData.texte;
+
+        const lignes = fsData.texte.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const zone = document.getElementById('fs-final-text');
+        if (lignes.length > 1) {
+            zone.innerHTML = '<ul class="fs-final-list">' + lignes.map(l => `<li>${echapperHTML(l)}</li>`).join('') + '</ul>';
+        } else {
+            zone.innerHTML = `<p style="margin:0;">${echapperHTML(fsData.texte)}</p>`;
+        }
+
         document.getElementById('fs-final-view').style.display = 'flex';
     }
 
     function texteCompletFinal() {
-        const titre = document.getElementById('fs-final-title').innerText;
-        const date  = document.getElementById('fs-final-date').innerText;
-        const texte = document.getElementById('fs-final-text').innerText;
-        return `${titre}\n${date}\n\n${texte}`;
+        return `${fsData.titre}\n${fsData.date}\n\n${fsData.texte}`;
+    }
+
+    function enregistrerPDF() {
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const titreClean = fsData.titre.replace(/^📄\s*/, '').replace(/🛡️/g, '');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.text(titreClean, 15, 20);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(fsData.date, 15, 28);
+
+            doc.setDrawColor(200);
+            doc.line(15, 32, 195, 32);
+
+            doc.setFontSize(12);
+            doc.setTextColor(30);
+            const lignes = doc.splitTextToSize(fsData.texte, 175);
+            doc.text(lignes, 15, 44);
+
+            doc.save('mes-engagements.pdf');
+            showToast('📄 PDF enregistré.', 'success');
+        } catch (e) {
+            showToast('❌ Impossible de générer le PDF sur cet appareil.', 'error');
+        }
     }
 
     function enregistrerTexteFinal() {
