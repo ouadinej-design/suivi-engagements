@@ -493,11 +493,11 @@
     // ============================================================
     // CONFIGURATION : durée pendant laquelle l'enveloppe reste
     // verrouillée après le scellage, avant que Nada puisse l'ouvrir.
-    // Valeur actuelle : 2 minutes (mode test).
+    // Valeur actuelle : 30 secondes (mode test).
     // Pour la mise en production réelle "30 jours", remplacer par :
     //   const DUREE_VERROU_MS = 30 * 24 * 60 * 60 * 1000;
     // ============================================================
-    const DUREE_VERROU_MS = 2 * 60 * 1000;
+    const DUREE_VERROU_MS = 30 * 1000;
 
     let countdownInterval = null;
     let profilActuel = null; // 'nada' ou 'stagiaire'
