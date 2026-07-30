@@ -216,27 +216,6 @@
             opacity: 0; animation: fsFadeIn 0.7s ease-out 0.1s both;
             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
-
-        .fs-paper {
-            position: relative; z-index: 3;
-            background: #fdf6e3; border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,0.4);
-            padding: 20px; max-width: 340px; width: 88%; max-height: 46vh; overflow-y: auto;
-            transform: translateY(50px) scale(0.85); opacity: 0;
-        }
-        #fs-stage-opened.play .fs-paper { animation: fsPaperOut 1s ease-out 0.3s both; }
-        @keyframes fsPaperOut {
-            0%   { transform: translateY(50px) scale(0.85); opacity: 0; }
-            100% { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        .fs-paper h3 { margin: 0 0 6px; color: #166534; font-size: 16px; }
-        .fs-paper .fs-date { font-size: 12px; color: #64748b; margin: 0 0 10px; }
-        .fs-paper .fs-content { white-space: pre-wrap; font-size: 15px; line-height: 1.5; color: #1e293b; }
-        .fs-continue-btn {
-            margin-top: 18px; background: #fff; color: #0369a1; border: none; border-radius: 24px;
-            padding: 13px 28px; font-weight: 800; font-size: 14px; cursor: pointer; z-index: 3;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0;
-        }
-        #fs-stage-opened.play .fs-continue-btn { animation: fsFadeIn 0.6s ease-out 1.2s both; }
         @keyframes fsFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 
         /* ==================== VUE FINALE — TEXTE SEUL PLEIN ÉCRAN ==================== */
@@ -463,25 +442,13 @@
     <!-- Étape 1 : dérive en mer (passage automatique) -->
     <div class="fs-stage" id="fs-stage-floating"></div>
 
-    <!-- Étape 2 : échouée sur la plage -->
-    <div class="fs-stage" id="fs-stage-landed">
-        <button class="fs-action-btn" id="fs-rub-btn" onclick="fsRubLabel()">✋ Frotter l'étiquette</button>
-    </div>
+    <!-- Étape 2 : échouée sur la plage, frottement automatique (avec son) -->
+    <div class="fs-stage" id="fs-stage-landed"></div>
 
     <!-- Étape 3 : nom révélé -->
     <div class="fs-stage" id="fs-stage-revealed">
         <div class="fs-label-box" id="fs-label-box"></div>
         <button class="fs-action-btn" onclick="fsOpenCork()">🔓 Ouvrir le bouchon</button>
-    </div>
-
-    <!-- Étape 4 : le message sort de la bouteille -->
-    <div class="fs-stage" id="fs-stage-opened">
-        <div class="fs-paper" id="fs-paper">
-            <h3 id="fs-title"></h3>
-            <p class="fs-date" id="fs-date"></p>
-            <div class="fs-content" id="fs-content"></div>
-        </div>
-        <button class="fs-continue-btn" onclick="afficherTexteFinal()">Continuer ✨</button>
     </div>
 
     <div class="fs-final-view" id="fs-final-view">
@@ -874,12 +841,129 @@
         }
     }
 
+    // ============================================================
+    // SONS (synthétisés via Web Audio, pas de fichier externe)
+    // ============================================================
+    let audioCtx = null;
+    function getAudioCtx() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    let vaguesNode = null;
+    function demarrerVagues() {
+        arreterVagues();
+        try {
+            const ctx = getAudioCtx();
+            const bufferSize = ctx.sampleRate * 2;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            noise.loop = true;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 500;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.6);
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start();
+            vaguesNode = { noise, gain };
+        } catch (e) { /* audio indisponible, on ignore silencieusement */ }
+    }
+    function arreterVagues() {
+        if (!vaguesNode) return;
+        try {
+            const ctx = getAudioCtx();
+            const { noise, gain } = vaguesNode;
+            gain.gain.cancelScheduledValues(ctx.currentTime);
+            gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+            noise.stop(ctx.currentTime + 0.35);
+        } catch (e) {}
+        vaguesNode = null;
+    }
+
+    function sonEchouage() {
+        try {
+            const ctx = getAudioCtx();
+            const duree = 0.6;
+            const bufferSize = ctx.sampleRate * duree;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass'; filter.frequency.value = 1400;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duree);
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start(); noise.stop(ctx.currentTime + duree);
+        } catch (e) {}
+    }
+
+    function sonFrottement(duree) {
+        try {
+            const ctx = getAudioCtx();
+            const bufferSize = ctx.sampleRate * duree;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass'; filter.frequency.value = 2200; filter.Q.value = 0.8;
+            const gain = ctx.createGain();
+            const now = ctx.currentTime;
+            gain.gain.setValueAtTime(0.001, now);
+            for (let t = 0; t < duree; t += 0.18) {
+                gain.gain.linearRampToValueAtTime(0.12, now + t + 0.06);
+                gain.gain.linearRampToValueAtTime(0.02, now + t + 0.16);
+            }
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start(now); noise.stop(now + duree);
+        } catch (e) {}
+    }
+
+    function sonBouchon() {
+        try {
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.2);
+
+            const bufferSize = ctx.sampleRate * 0.05;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.3, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            noise.connect(noiseGain); noiseGain.connect(ctx.destination);
+            noise.start(now);
+        } catch (e) {}
+    }
+
     // ---- Animation plein écran : la bouteille s'ouvre, le message en sort ----
     let fsData = null;
     let fsFloatTimer = null;
 
     function fsShowStage(id) {
-        ['fs-stage-floating', 'fs-stage-landed', 'fs-stage-revealed', 'fs-stage-opened'].forEach(s => {
+        ['fs-stage-floating', 'fs-stage-landed', 'fs-stage-revealed'].forEach(s => {
             document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
         });
     }
@@ -896,50 +980,39 @@
         };
 
         document.getElementById('fs-final-view').style.display = 'none';
-        document.getElementById('fs-stage-opened').classList.remove('play');
-        document.getElementById('fs-rub-btn').disabled = false;
-        document.getElementById('fs-rub-btn').innerText = "✋ Frotter l'étiquette";
         fsShowStage('fs-stage-floating');
 
         overlay.classList.add('show');
         document.body.style.overflow = 'hidden';
 
+        demarrerVagues();
+
         clearTimeout(fsFloatTimer);
         fsFloatTimer = setTimeout(fsWashAshore, 3500);
     }
 
-    // Étape 1 → 2 : la bouteille échoue sur la plage (automatique)
+    // Étape 1 → 2 : la bouteille échoue sur la plage (automatique, avec son)
     function fsWashAshore() {
         fsShowStage('fs-stage-landed');
-    }
-
-    // Étape 2 → 3 : on frotte l'étiquette, le nom apparaît
-    function fsRubLabel() {
-        const btn = document.getElementById('fs-rub-btn');
-        btn.disabled = true;
-        btn.innerText = '🧴 Nettoyage en cours...';
+        sonEchouage();
+        setTimeout(() => sonFrottement(1.3), 400);
         setTimeout(() => {
             document.getElementById('fs-label-box').innerText = `STAGIAIRE : ${fsData.prenom} ${fsData.nom}`;
             fsShowStage('fs-stage-revealed');
-        }, 1500);
+        }, 1900);
     }
 
-    // Étape 3 → 4 : on retire le bouchon, le message sort de la bouteille
+    // Étape 3 → vue finale : on retire le bouchon, le message apparaît en plein écran
     function fsOpenCork() {
-        document.getElementById('fs-title').innerText   = fsData.titre;
-        document.getElementById('fs-date').innerText    = fsData.date;
-        document.getElementById('fs-content').innerText = fsData.texte;
-
-        fsShowStage('fs-stage-opened');
-        const stage = document.getElementById('fs-stage-opened');
-        stage.classList.remove('play');
-        void stage.offsetWidth; // reflow pour relancer l'animation
-        stage.classList.add('play');
+        sonBouchon();
+        arreterVagues();
+        setTimeout(afficherTexteFinal, 350);
     }
 
     function fermerAnimationFullscreen() {
         const overlay = document.getElementById('fs-bottle-overlay');
         clearTimeout(fsFloatTimer);
+        arreterVagues();
         overlay.classList.remove('show');
         document.getElementById('fs-final-view').style.display = 'none';
         document.body.style.overflow = '';
@@ -947,9 +1020,9 @@
 
     // ---- Vue finale : uniquement le texte, plein écran ----
     function afficherTexteFinal() {
-        document.getElementById('fs-final-title').innerText = document.getElementById('fs-title').innerText;
-        document.getElementById('fs-final-date').innerText  = document.getElementById('fs-date').innerText;
-        document.getElementById('fs-final-text').innerText  = document.getElementById('fs-content').innerText;
+        document.getElementById('fs-final-title').innerText = fsData.titre;
+        document.getElementById('fs-final-date').innerText  = fsData.date;
+        document.getElementById('fs-final-text').innerText  = fsData.texte;
         document.getElementById('fs-final-view').style.display = 'flex';
     }
 
