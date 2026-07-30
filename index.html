@@ -462,20 +462,17 @@
 
     <!-- Étape 1 : dérive en mer -->
     <div class="fs-stage" id="fs-stage-floating">
-        <p class="fs-stage-caption">🌊 La bouteille dérive en mer...</p>
         <button class="fs-action-btn" onclick="fsWashAshore()">▶️ Faire échouer sur la plage</button>
     </div>
 
     <!-- Étape 2 : échouée sur la plage -->
     <div class="fs-stage" id="fs-stage-landed">
-        <p class="fs-stage-caption">🏖️ Échouée sur la plage. Frottez l'étiquette pour révéler le nom.</p>
         <button class="fs-action-btn" id="fs-rub-btn" onclick="fsRubLabel()">✋ Frotter l'étiquette</button>
     </div>
 
     <!-- Étape 3 : nom révélé -->
     <div class="fs-stage" id="fs-stage-revealed">
         <div class="fs-label-box" id="fs-label-box"></div>
-        <p class="fs-stage-caption">✨ Le nom apparaît ! Retirez le bouchon pour lire la lettre.</p>
         <button class="fs-action-btn" onclick="fsOpenCork()">🔓 Ouvrir le bouchon</button>
     </div>
 
